@@ -618,10 +618,10 @@ static int start_listen(struct mux_client *client)
 
 static char* plist_dict_get_string_val(plist_t dict, const char* key)
 {
-	if (!dict || plist_get_node_type(dict) != PLIST_DICT)
+	if (plist_get_node_type(dict) != PLIST_DICT)
 		return NULL;
 	plist_t item = plist_dict_get_item(dict, key);
-	if (!item || plist_get_node_type(item) != PLIST_STRING)
+	if (plist_get_node_type(item) != PLIST_STRING)
 		return NULL;
 	char *str = NULL;
 	plist_get_string_val(item, &str);
@@ -631,7 +631,7 @@ static char* plist_dict_get_string_val(plist_t dict, const char* key)
 static void copy_plist_item(const char* key, plist_type type, plist_t src, plist_t dest)
 {
 	plist_t item = plist_dict_get_item(src, key);
-	if (item && (plist_get_node_type(item) == type)) {
+	if (plist_get_node_type(item) == type) {
 		plist_dict_set_item(dest, key, plist_copy(item));
 	}
 }
@@ -684,7 +684,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 			} else {
 				char *message = NULL;
 				plist_t node = plist_dict_get_item(dict, "MessageType");
-				if (!node || plist_get_node_type(node) != PLIST_STRING) {
+				if (plist_get_node_type(node) != PLIST_STRING) {
 					usbmuxd_log(LL_ERROR, "Could not read valid MessageType node from plist!");
 					plist_free(dict);
 					return -1;
@@ -782,7 +782,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 					char* record_data = NULL;
 					uint64_t record_size = 0;
 					plist_t rdata = plist_dict_get_item(dict, "PairRecordData");
-					if (rdata && plist_get_node_type(rdata) == PLIST_DATA) {
+					if (plist_get_node_type(rdata) == PLIST_DATA) {
 						plist_get_data_val(rdata, &record_data, &record_size);
 					}
 
@@ -793,7 +793,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 						} else {
 							plist_t p_dev_id = plist_dict_get_item(dict, "DeviceID");
 							uint32_t dev_id = 0;
-							if (p_dev_id && plist_get_node_type(p_dev_id) == PLIST_UINT) {
+							if (plist_get_node_type(p_dev_id) == PLIST_UINT) {
 								uint64_t u_dev_id = 0;
 								plist_get_uint_val(p_dev_id, &u_dev_id);
 								dev_id = (uint32_t)u_dev_id;
