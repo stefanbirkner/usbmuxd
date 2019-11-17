@@ -63,16 +63,16 @@ static int level_to_priority(int level)
 
 static void write_to_syslog(enum loglevel level, const char *fmt, va_list ap)
 {
-	char *fs = malloc(6 + strlen(fmt));
+	char *complete_fmt = malloc(6 + strlen(fmt));
 
-	sprintf(fs, "[%d] %s\n", level, fmt);
-	vsyslog(level_to_priority(level), fs, ap);
-	free(fs);
+	sprintf(complete_fmt, "[%d] %s\n", level, fmt);
+	vsyslog(level_to_priority(level), complete_fmt, ap);
+	free(complete_fmt);
 }
 
 static void write_to_stderr(enum loglevel level, const char *fmt, va_list ap)
 {
-	char *fs = malloc(20 + strlen(fmt));
+	char *complete_fmt = malloc(20 + strlen(fmt));
 
 	struct timeval ts;
 	struct tm tp_;
@@ -85,10 +85,10 @@ static void write_to_stderr(enum loglevel level, const char *fmt, va_list ap)
 	tp = localtime(&ts.tv_sec);
 #endif
 
-	strftime(fs, 10, "[%H:%M:%S", tp);
-	sprintf(fs+9, ".%03d][%d] %s\n", (int)(ts.tv_usec / 1000), level, fmt);
-	vfprintf(stderr, fs, ap);
-	free(fs);
+	strftime(complete_fmt, 10, "[%H:%M:%S", tp);
+	sprintf(complete_fmt+9, ".%03d][%d] %s\n", (int)(ts.tv_usec / 1000), level, fmt);
+	vfprintf(stderr, complete_fmt, ap);
+	free(complete_fmt);
 }
 
 void usbmuxd_log(enum loglevel level, const char *fmt, ...)
