@@ -315,6 +315,15 @@ static int ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout
 }
 #endif
 
+static void collect_fds(int listenfd, struct fdlist *fds)
+{
+	fdlist_reset(fds);
+	fdlist_add(fds, FD_LISTEN, listenfd, POLLIN);
+	usb_get_fds(fds);
+	client_get_fds(fds);
+	usbmuxd_log(LL_FLOOD, "fd count is %d", fds->count);
+}
+
 static void get_timeout(struct timespec *tspec)
 {
 	int timeout, device_timeout;
@@ -340,12 +349,7 @@ static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 	while(!should_exit) {
 		usbmuxd_log(LL_FLOOD, "main_loop iteration");
 		get_timeout(&tspec);
-
-		fdlist_reset(pollfds);
-		fdlist_add(pollfds, FD_LISTEN, listenfd, POLLIN);
-		usb_get_fds(pollfds);
-		client_get_fds(pollfds);
-		usbmuxd_log(LL_FLOOD, "fd count is %d", pollfds->count);
+		collect_fds(listenfd, pollfds);
 
 		cnt = ppoll(pollfds->fds, pollfds->count, &tspec, &empty_sigset);
 		usbmuxd_log(LL_FLOOD, "poll() returned %d", cnt);
