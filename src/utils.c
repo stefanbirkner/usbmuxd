@@ -40,42 +40,6 @@
 #include "log.h"
 #define util_error(...) usbmuxd_log(LL_ERROR, __VA_ARGS__)
 
-void fdlist_create(struct fdlist *list)
-{
-	list->count = 0;
-	list->capacity = 4;
-	list->owners = malloc(sizeof(*list->owners) * list->capacity);
-	list->fds = malloc(sizeof(*list->fds) * list->capacity);
-}
-void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
-{
-	if(list->count == list->capacity) {
-		list->capacity *= 2;
-		list->owners = realloc(list->owners, sizeof(*list->owners) * list->capacity);
-		list->fds = realloc(list->fds, sizeof(*list->fds) * list->capacity);
-	}
-	list->owners[list->count] = owner;
-	list->fds[list->count].fd = fd;
-	list->fds[list->count].events = events;
-	list->fds[list->count].revents = 0;
-	list->count++;
-}
-
-void fdlist_free(struct fdlist *list)
-{
-	list->count = 0;
-	list->capacity = 0;
-	free(list->owners);
-	list->owners = NULL;
-	free(list->fds);
-	list->fds = NULL;
-}
-
-void fdlist_reset(struct fdlist *list)
-{
-	list->count = 0;
-}
-
 #define CAPACITY_STEP 8
 
 void collection_init(struct collection *col)

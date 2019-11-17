@@ -22,26 +22,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <poll.h>
 #include <plist/plist.h>
-
-enum fdowner {
-	FD_LISTEN,
-	FD_CLIENT,
-	FD_USB
-};
-
-struct fdlist {
-	int count;
-	int capacity;
-	enum fdowner *owners;
-	struct pollfd *fds;
-};
-
-void fdlist_create(struct fdlist *list);
-void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events);
-void fdlist_free(struct fdlist *list);
-void fdlist_reset(struct fdlist *list);
 
 struct collection {
 	void **list;

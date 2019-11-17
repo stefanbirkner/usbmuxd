@@ -23,7 +23,7 @@
 #define USB_H
 
 #include <stdint.h>
-#include "utils.h"
+#include "fdlist.h"
 
 #define INTERFACE_CLASS 255
 #define INTERFACE_SUBCLASS 254

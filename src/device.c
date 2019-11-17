@@ -38,6 +38,7 @@
 #include "client.h"
 #include "preflight.h"
 #include "usb.h"
+#include "utils.h"
 #include "log.h"
 
 int next_device_id;

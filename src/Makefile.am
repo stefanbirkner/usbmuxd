@@ -21,6 +21,7 @@ usbmuxd_LDFLAGS = $(AM_LDFLAGS) -no-undefined
 usbmuxd_SOURCES = \
 	client.c client.h \
 	device.c device.h \
+	fdlist.c fdlist.h \
 	preflight.c preflight.h \
 	log.c log.h \
 	usbmuxd-proto.h \

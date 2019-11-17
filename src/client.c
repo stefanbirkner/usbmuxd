@@ -41,6 +41,7 @@
 
 #include "log.h"
 #include "usb.h"
+#include "utils.h"
 #include "client.h"
 #include "device.h"
 #include "conf.h"
