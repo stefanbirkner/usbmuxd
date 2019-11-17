@@ -1,4 +1,18 @@
-# usbmuxd
+# Stefan Birkner's usbmuxd fork
+
+This is a fork of the usbmuxd repository. The indent of the fork is to
+make the code more readable. This means that at least in the `master`
+branch the fork's behaviour is the same like the original. Only the code
+looks different.
+
+I created this repository because for me it was not easy to understand
+usbmuxd's code. The reason may be manifold (e.g. I'm usually developing
+software in other languages and this is my first C code for years).
+
+I hope that this refactored usbmuxd is helpful for you too.
+
+The plan is to keep this repository updated by regularly rebasing it
+against the original usbmuxd repository.
 
 *A socket daemon to multiplex connections from and to iOS devices.*
 
