@@ -54,11 +54,11 @@ void log_disable_syslog()
 
 static int level_to_syslog_level(int level)
 {
-	int result = level + LOG_CRIT;
-	if (result > LOG_DEBUG) {
-		result = LOG_DEBUG;
+	int priority = level + LOG_CRIT;
+	if (priority > LOG_DEBUG) {
+		priority = LOG_DEBUG;
 	}
-	return result;
+	return priority;
 }
 
 static void write_to_syslog(enum loglevel level, const char *fmt, va_list ap)
