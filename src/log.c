@@ -61,41 +61,48 @@ static int level_to_syslog_level(int level)
 	return result;
 }
 
+static void write_to_syslog(enum loglevel level, const char *fmt, va_list ap)
+{
+	char *fs = malloc(20 + strlen(fmt));
+
+	sprintf(fs, "[%d] %s\n", level, fmt);
+	vsyslog(level_to_syslog_level(level), fs, ap);
+	free(fs);
+}
+
+static void write_to_stderr(enum loglevel level, const char *fmt, va_list ap)
+{
+	char *fs = malloc(20 + strlen(fmt));
+
+	struct timeval ts;
+	struct tm tp_;
+	struct tm *tp;
+
+	gettimeofday(&ts, NULL);
+#ifdef HAVE_LOCALTIME_R
+	tp = localtime_r(&ts.tv_sec, &tp_);
+#else
+	tp = localtime(&ts.tv_sec);
+#endif
+
+	strftime(fs, 10, "[%H:%M:%S", tp);
+	sprintf(fs+9, ".%03d][%d] %s\n", (int)(ts.tv_usec / 1000), level, fmt);
+	vfprintf(stderr, fs, ap);
+	free(fs);
+}
+
 void usbmuxd_log(enum loglevel level, const char *fmt, ...)
 {
 	va_list ap;
-	char *fs;
 
 	if(level > log_level)
 		return;
 
-	fs = malloc(20 + strlen(fmt));
-
-	if(log_syslog) {
-		sprintf(fs, "[%d] %s\n", level, fmt);
-	} else {
-		struct timeval ts;
-		struct tm tp_;
-		struct tm *tp;
-
-		gettimeofday(&ts, NULL);
-#ifdef HAVE_LOCALTIME_R
-		tp = localtime_r(&ts.tv_sec, &tp_);
-#else
-		tp = localtime(&ts.tv_sec);
-#endif
-
-		strftime(fs, 10, "[%H:%M:%S", tp);
-		sprintf(fs+9, ".%03d][%d] %s\n", (int)(ts.tv_usec / 1000), level, fmt);
-	}
-
 	va_start(ap, fmt);
 	if (log_syslog) {
-		vsyslog(level_to_syslog_level(level), fs, ap);
+		write_to_syslog(level, fmt, ap);
 	} else {
-		vfprintf(stderr, fs, ap);
+		write_to_stderr(level, fmt, ap);
 	}
 	va_end(ap);
-
-	free(fs);
 }
