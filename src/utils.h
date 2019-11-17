@@ -24,18 +24,6 @@
 
 #include <plist/plist.h>
 
-struct collection {
-	void **list;
-	int capacity;
-};
-
-void collection_init(struct collection *col);
-void collection_add(struct collection *col, void *element);
-void collection_remove(struct collection *col, void *element);
-int collection_count(struct collection *col);
-void collection_free(struct collection *col);
-void collection_copy(struct collection *dest, struct collection *src);
-
 #define MERGE_(a,b) a ## _ ## b
 #define LABEL_(a,b) MERGE_(a, b)
 #define UNIQUE_VAR(a) LABEL_(a, __LINE__)

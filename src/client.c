@@ -39,6 +39,7 @@
 
 #include <plist/plist.h>
 
+#include "collection.h"
 #include "log.h"
 #include "usb.h"
 #include "utils.h"

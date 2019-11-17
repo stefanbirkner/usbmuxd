@@ -38,68 +38,6 @@
 #include "utils.h"
 
 #include "log.h"
-#define util_error(...) usbmuxd_log(LL_ERROR, __VA_ARGS__)
-
-#define CAPACITY_STEP 8
-
-void collection_init(struct collection *col)
-{
-	col->list = malloc(sizeof(void *) * CAPACITY_STEP);
-	memset(col->list, 0, sizeof(void *) * CAPACITY_STEP);
-	col->capacity = CAPACITY_STEP;
-}
-
-void collection_free(struct collection *col)
-{
-	free(col->list);
-	col->list = NULL;
-	col->capacity = 0;
-}
-
-void collection_add(struct collection *col, void *element)
-{
-	int i;
-	for(i=0; i<col->capacity; i++) {
-		if(!col->list[i]) {
-			col->list[i] = element;
-			return;
-		}
-	}
-	col->list = realloc(col->list, sizeof(void*) * (col->capacity + CAPACITY_STEP));
-	memset(&col->list[col->capacity], 0, sizeof(void *) * CAPACITY_STEP);
-	col->list[col->capacity] = element;
-	col->capacity += CAPACITY_STEP;
-}
-
-void collection_remove(struct collection *col, void *element)
-{
-	int i;
-	for(i=0; i<col->capacity; i++) {
-		if(col->list[i] == element) {
-			col->list[i] = NULL;
-			return;
-		}
-	}
-	util_error("collection_remove: element %p not present in collection %p (cap %d)", element, col, col->capacity);
-}
-
-int collection_count(struct collection *col)
-{
-	int i, cnt = 0;
-	for(i=0; i<col->capacity; i++) {
-		if(col->list[i])
-			cnt++;
-	}
-	return cnt;
-}
-
-void collection_copy(struct collection *dest, struct collection *src)
-{
-	if (!dest || !src) return;
-	dest->capacity = src->capacity;
-	dest->list = malloc(sizeof(void*) * src->capacity);
-	memcpy(dest->list, src->list, sizeof(void*) * src->capacity);
-}
 
 #ifndef HAVE_STPCPY
 /**

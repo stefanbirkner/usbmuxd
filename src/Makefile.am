@@ -20,6 +20,7 @@ usbmuxd_CFLAGS = $(AM_CFLAGS)
 usbmuxd_LDFLAGS = $(AM_LDFLAGS) -no-undefined
 usbmuxd_SOURCES = \
 	client.c client.h \
+	collection.c collection.h \
 	device.c device.h \
 	fdlist.c fdlist.h \
 	preflight.c preflight.h \

@@ -34,6 +34,8 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <unistd.h>
+
+#include "collection.h"
 #include "device.h"
 #include "client.h"
 #include "preflight.h"

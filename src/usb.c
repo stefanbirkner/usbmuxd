@@ -31,6 +31,7 @@
 
 #include <libusb.h>
 
+#include "collection.h"
 #include "usb.h"
 #include "log.h"
 #include "device.h"
