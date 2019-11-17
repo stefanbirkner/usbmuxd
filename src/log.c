@@ -63,7 +63,7 @@ static int level_to_priority(int level)
 
 static void write_to_syslog(enum loglevel level, const char *fmt, va_list ap)
 {
-	char *fs = malloc(20 + strlen(fmt));
+	char *fs = malloc(6 + strlen(fmt));
 
 	sprintf(fs, "[%d] %s\n", level, fmt);
 	vsyslog(level_to_priority(level), fs, ap);
