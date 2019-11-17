@@ -26,7 +26,6 @@
 #include "collection.h"
 
 #include "log.h"
-#define util_error(...) usbmuxd_log(LL_ERROR, __VA_ARGS__)
 
 #define CAPACITY_STEP 8
 
@@ -68,7 +67,7 @@ void collection_remove(struct collection *col, void *element)
 			return;
 		}
 	}
-	util_error("collection_remove: element %p not present in collection %p (cap %d)", element, col, col->capacity);
+	usbmuxd_log(LL_ERROR, "collection_remove: element %p not present in collection %p (cap %d)", element, col, col->capacity);
 }
 
 int collection_count(struct collection *col)
