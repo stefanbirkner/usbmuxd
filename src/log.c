@@ -52,7 +52,7 @@ void log_disable_syslog()
 	}
 }
 
-static int level_to_syslog_level(int level)
+static int level_to_priority(int level)
 {
 	int priority = level + LOG_CRIT;
 	if (priority > LOG_DEBUG) {
@@ -66,7 +66,7 @@ static void write_to_syslog(enum loglevel level, const char *fmt, va_list ap)
 	char *fs = malloc(20 + strlen(fmt));
 
 	sprintf(fs, "[%d] %s\n", level, fmt);
-	vsyslog(level_to_syslog_level(level), fs, ap);
+	vsyslog(level_to_priority(level), fs, ap);
 	free(fs);
 }
 
