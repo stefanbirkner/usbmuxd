@@ -1,5 +1,7 @@
 # usbmuxd
 
+[![Build Status](https://travis-ci.com/stefanbirkner/usbmuxd.svg?branch=master)](https://travis-ci.com/stefanbirkner/usbmuxd)
+
 *A socket daemon to multiplex connections from and to iOS devices.*
 
 ## Features

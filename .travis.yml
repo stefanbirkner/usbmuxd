@@ -1,0 +1,13 @@
+# we need bionic in order to have an up-to-date libimobiledevice
+dist: bionic
+language: c
+script:
+  - ./autogen.sh
+  - make
+addons:
+  apt:
+    packages:
+    - libimobiledevice-dev
+    - libplist-dev
+    - libusb-1.0.0-dev
+    update: true
