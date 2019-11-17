@@ -315,16 +315,14 @@ static int ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout
 }
 #endif
 
-static int main_loop(int listenfd)
+static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 {
 	int to, cnt, i, dto;
-	struct fdlist pollfds;
 	struct timespec tspec;
 
 	sigset_t empty_sigset;
 	sigemptyset(&empty_sigset); // unmask all signals
 
-	fdlist_create(&pollfds);
 	while(!should_exit) {
 		usbmuxd_log(LL_FLOOD, "main_loop iteration");
 		to = usb_get_timeout();
@@ -334,15 +332,15 @@ static int main_loop(int listenfd)
 		if(dto < to)
 			to = dto;
 
-		fdlist_reset(&pollfds);
-		fdlist_add(&pollfds, FD_LISTEN, listenfd, POLLIN);
-		usb_get_fds(&pollfds);
-		client_get_fds(&pollfds);
-		usbmuxd_log(LL_FLOOD, "fd count is %d", pollfds.count);
+		fdlist_reset(pollfds);
+		fdlist_add(pollfds, FD_LISTEN, listenfd, POLLIN);
+		usb_get_fds(pollfds);
+		client_get_fds(pollfds);
+		usbmuxd_log(LL_FLOOD, "fd count is %d", pollfds->count);
 
 		tspec.tv_sec = to / 1000;
 		tspec.tv_nsec = (to % 1000) * 1000000;
-		cnt = ppoll(pollfds.fds, pollfds.count, &tspec, &empty_sigset);
+		cnt = ppoll(pollfds->fds, pollfds->count, &tspec, &empty_sigset);
 		usbmuxd_log(LL_FLOOD, "poll() returned %d", cnt);
 		if(cnt == -1) {
 			if(errno == EINTR) {
@@ -359,38 +357,45 @@ static int main_loop(int listenfd)
 		} else if(cnt == 0) {
 			if(usb_process() < 0) {
 				usbmuxd_log(LL_FATAL, "usb_process() failed");
-				fdlist_free(&pollfds);
 				return -1;
 			}
 			device_check_timeouts();
 		} else {
 			int done_usb = 0;
-			for(i=0; i<pollfds.count; i++) {
-				if(pollfds.fds[i].revents) {
-					if(!done_usb && pollfds.owners[i] == FD_USB) {
+			for(i=0; i<pollfds->count; i++) {
+				if(pollfds->fds[i].revents) {
+					if(!done_usb && pollfds->owners[i] == FD_USB) {
 						if(usb_process() < 0) {
 							usbmuxd_log(LL_FATAL, "usb_process() failed");
-							fdlist_free(&pollfds);
 							return -1;
 						}
 						done_usb = 1;
 					}
-					if(pollfds.owners[i] == FD_LISTEN) {
+					if(pollfds->owners[i] == FD_LISTEN) {
 						if(client_accept(listenfd) < 0) {
 							usbmuxd_log(LL_FATAL, "client_accept() failed");
-							fdlist_free(&pollfds);
 							return -1;
 						}
 					}
-					if(pollfds.owners[i] == FD_CLIENT) {
-						client_process(pollfds.fds[i].fd, pollfds.fds[i].revents);
+					if(pollfds->owners[i] == FD_CLIENT) {
+						client_process(pollfds->fds[i].fd, pollfds->fds[i].revents);
 					}
 				}
 			}
 		}
 	}
-	fdlist_free(&pollfds);
 	return 0;
+}
+
+static int main_loop(int listenfd)
+{
+	int res = 0;
+	struct fdlist pollfds;
+
+	fdlist_create(&pollfds);
+	res = main_loop_for_fdlist(listenfd, &pollfds);
+	fdlist_free(&pollfds);
+	return res;
 }
 
 /**
