@@ -254,7 +254,7 @@ static int internal_set_value(const char *config_file, const char *key, plist_t 
 		usbmuxd_log(LL_DEBUG, "Setting key %s in config file %s", key, config_file);
 	}
 
-	int res = plist_write_to_filename(config, config_file, PLIST_FORMAT_XML);
+	int res = plist_write_to_filename(config, config_file);
 
 	plist_free(config);
 
@@ -428,7 +428,7 @@ int config_set_device_record(const char *udid, char* record_data, uint64_t recor
 	remove(device_record_file);
 
 	/* store file */
-	if (!plist_write_to_filename(plist, device_record_file, PLIST_FORMAT_XML)) {
+	if (!plist_write_to_filename(plist, device_record_file)) {
 		usbmuxd_log(LL_DEBUG, "Could not open '%s' for writing: %s", device_record_file, strerror(errno));
 		res = -ENOENT;
 	}

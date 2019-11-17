@@ -204,7 +204,7 @@ int plist_read_from_filename(plist_t *plist, const char *filename)
 	return 1;
 }
 
-int plist_write_to_filename(plist_t plist, const char *filename, enum plist_format_t format)
+int plist_write_to_filename(plist_t plist, const char *filename)
 {
 	char *buffer = NULL;
 	uint32_t length;
@@ -212,12 +212,7 @@ int plist_write_to_filename(plist_t plist, const char *filename, enum plist_form
 	if (!plist || !filename)
 		return 0;
 
-	if (format == PLIST_FORMAT_XML)
-		plist_to_xml(plist, &buffer, &length);
-	else if (format == PLIST_FORMAT_BINARY)
-		plist_to_bin(plist, &buffer, &length);
-	else
-		return 0;
+	plist_to_xml(plist, &buffer, &length);
 
 	int res  = buffer_write_to_filename(filename, buffer, length);
 
