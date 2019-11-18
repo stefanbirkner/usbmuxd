@@ -968,9 +968,10 @@ static void input_buffer_process(struct mux_client *client)
 	client->ib_size = 0;
 }
 
-void client_process(int fd, short events)
+static struct mux_client* find_by_fd(int fd)
 {
 	struct mux_client *client = NULL;
+
 	pthread_mutex_lock(&client_list_mutex);
 	FOREACH(struct mux_client *lc, &client_list) {
 		if(lc->fd == fd) {
@@ -979,6 +980,13 @@ void client_process(int fd, short events)
 		}
 	} ENDFOREACH
 	pthread_mutex_unlock(&client_list_mutex);
+
+	return client;
+}
+
+void client_process(int fd, short events)
+{
+	struct mux_client *client = find_by_fd(fd);
 
 	if(!client) {
 		usbmuxd_log(LL_INFO, "client_process: fd %d not found in client list", fd);
