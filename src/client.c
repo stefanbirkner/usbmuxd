@@ -678,9 +678,192 @@ static int start_connect(int device_id, uint16_t port, struct mux_client *client
 	return 0;
 }
 
+static int client_plist_command(struct mux_client *client, struct usbmuxd_header *hdr)
+{
+	char *payload;
+	uint32_t payload_size;
+	int res;
+
+	client->proto_version = 1;
+	payload = (char*)(hdr) + sizeof(struct usbmuxd_header);
+	payload_size = hdr->length - sizeof(struct usbmuxd_header);
+	plist_t dict = NULL;
+	plist_from_xml(payload, payload_size, &dict);
+	if (!dict) {
+		usbmuxd_log(LL_ERROR, "Could not parse plist from payload!");
+		return -1;
+	} else {
+		char *message = NULL;
+		plist_t node = plist_dict_get_item(dict, "MessageType");
+		if (plist_get_node_type(node) != PLIST_STRING) {
+			usbmuxd_log(LL_ERROR, "Could not read valid MessageType node from plist!");
+			plist_free(dict);
+			return -1;
+		}
+		plist_get_string_val(node, &message);
+		if (!message) {
+			usbmuxd_log(LL_ERROR, "Could not extract MessageType from plist!");
+			plist_free(dict);
+			return -1;
+		}
+		update_client_info(client, dict);
+		if (!strcmp(message, "Listen")) {
+			free(message);
+			plist_free(dict);
+			return start_listen(client, hdr);
+		} else if (!strcmp(message, "Connect")) {
+			uint64_t val;
+			uint16_t portnum = 0;
+			uint32_t device_id = 0;
+			free(message);
+			// get device id
+			node = plist_dict_get_item(dict, "DeviceID");
+			if (!node) {
+				usbmuxd_log(LL_ERROR, "Received connect request without device_id!");
+				plist_free(dict);
+				if (send_result(client, hdr->tag, RESULT_BADDEV) < 0)
+					return -1;
+				return 0;
+			}
+			val = 0;
+			plist_get_uint_val(node, &val);
+			device_id = (uint32_t)val;
+
+			// get port number
+			node = plist_dict_get_item(dict, "PortNumber");
+			if (!node) {
+				usbmuxd_log(LL_ERROR, "Received connect request without port number!");
+				plist_free(dict);
+				return send_bad_command(client, hdr->tag);
+			}
+			val = 0;
+			plist_get_uint_val(node, &val);
+			portnum = (uint16_t)val;
+			plist_free(dict);
+
+			usbmuxd_log(LL_DEBUG, "Client %d requesting connection to device %d port %d", client->fd, device_id, ntohs(portnum));
+			res = device_start_connect(device_id, ntohs(portnum), client);
+			if(res < 0) {
+				if (send_result(client, hdr->tag, -res) < 0)
+					return -1;
+			} else {
+				client->connect_tag = hdr->tag;
+				client->connect_device = device_id;
+				client->state = CLIENT_CONNECTING1;
+			}
+			return 0;
+		} else if (!strcmp(message, "ListDevices")) {
+			free(message);
+			plist_free(dict);
+			if (send_device_list(client, hdr->tag) < 0)
+				return -1;
+			return 0;
+		} else if (!strcmp(message, "ListListeners")) {
+			free(message);
+			plist_free(dict);
+			if (send_listener_list(client, hdr->tag) < 0)
+				return -1;
+			return 0;
+		} else if (!strcmp(message, "ReadBUID")) {
+			free(message);
+			plist_free(dict);
+			if (send_system_buid(client, hdr->tag) < 0)
+				return -1;
+			return 0;
+		} else if (!strcmp(message, "ReadPairRecord")) {
+			free(message);
+			char* record_id = plist_dict_get_string_val(dict, "PairRecordID");
+			plist_free(dict);
+
+			res = send_pair_record(client, hdr->tag, record_id);
+			if (record_id)
+				free(record_id);
+			if (res < 0)
+				return -1;
+			return 0;
+		} else if (!strcmp(message, "SavePairRecord")) {
+			uint32_t rval = RESULT_OK;
+			free(message);
+			char* record_id = plist_dict_get_string_val(dict, "PairRecordID");
+			char* record_data = NULL;
+			uint64_t record_size = 0;
+			plist_t rdata = plist_dict_get_item(dict, "PairRecordData");
+			if (plist_get_node_type(rdata) == PLIST_DATA) {
+				plist_get_data_val(rdata, &record_data, &record_size);
+			}
+
+			if (record_id && record_data) {
+				res = config_set_device_record(record_id, record_data, record_size);
+				if (res < 0) {
+					rval = -res;
+				} else {
+					plist_t p_dev_id = plist_dict_get_item(dict, "DeviceID");
+					uint32_t dev_id = 0;
+					if (plist_get_node_type(p_dev_id) == PLIST_UINT) {
+						uint64_t u_dev_id = 0;
+						plist_get_uint_val(p_dev_id, &u_dev_id);
+						dev_id = (uint32_t)u_dev_id;
+					}
+					if (dev_id > 0) {
+						struct device_info *devs = NULL;
+						struct device_info *dev;
+						int i;
+						int count = device_get_list(1, &devs);
+						int found = 0;
+						dev = devs;
+						for (i = 0; devs && i < count; i++, dev++) {
+							if ((uint32_t)dev->id == dev_id && (strcmp(dev->serial, record_id) == 0)) {
+								found++;
+								break;
+							}
+						}
+						if (!found) {
+							usbmuxd_log(LL_ERROR, "ERROR: SavePairRecord: DeviceID %d (%s) is not connected\n", dev_id, record_id);
+						} else {
+							client_device_paired(dev_id);
+						}
+						free(devs);
+					}
+				}
+				free(record_id);
+			} else {
+				rval = EINVAL;
+			}
+			free(record_data);
+			plist_free(dict);
+			if (send_result(client, hdr->tag, rval) < 0)
+				return -1;
+			return 0;
+		} else if (!strcmp(message, "DeletePairRecord")) {
+			uint32_t rval = RESULT_OK;
+			free(message);
+			char* record_id = plist_dict_get_string_val(dict, "PairRecordID");
+			plist_free(dict);
+			if (record_id) {
+				res = config_remove_device_record(record_id);
+				if (res < 0) {
+					rval = -res;
+				}
+				free(record_id);
+			} else {
+				rval = EINVAL;
+			}
+			if (send_result(client, hdr->tag, rval) < 0)
+				return -1;
+			return 0;
+		} else {
+			usbmuxd_log(LL_ERROR, "Unexpected command '%s' received!", message);
+			free(message);
+			plist_free(dict);
+			return send_bad_command(client, hdr->tag);
+		}
+	}
+	// should not be reached?!
+	return -1;
+}
+
 static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 {
-	int res;
 	usbmuxd_log(LL_DEBUG, "Client %d command len %d ver %d msg %d tag %d", client->fd, hdr->length, hdr->version, hdr->message, hdr->tag);
 
 	if(client->state != CLIENT_COMMAND) {
@@ -698,177 +881,10 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 	}
 
 	struct usbmuxd_connect_request *ch;
-	char *payload;
-	uint32_t payload_size;
 
 	switch(hdr->message) {
 		case MESSAGE_PLIST:
-			client->proto_version = 1;
-			payload = (char*)(hdr) + sizeof(struct usbmuxd_header);
-			payload_size = hdr->length - sizeof(struct usbmuxd_header);
-			plist_t dict = NULL;
-			plist_from_xml(payload, payload_size, &dict);
-			if (!dict) {
-				usbmuxd_log(LL_ERROR, "Could not parse plist from payload!");
-				return -1;
-			} else {
-				char *message = NULL;
-				plist_t node = plist_dict_get_item(dict, "MessageType");
-				if (plist_get_node_type(node) != PLIST_STRING) {
-					usbmuxd_log(LL_ERROR, "Could not read valid MessageType node from plist!");
-					plist_free(dict);
-					return -1;
-				}
-				plist_get_string_val(node, &message);
-				if (!message) {
-					usbmuxd_log(LL_ERROR, "Could not extract MessageType from plist!");
-					plist_free(dict);
-					return -1;
-				}
-				update_client_info(client, dict);
-				if (!strcmp(message, "Listen")) {
-					free(message);
-					plist_free(dict);
-					return start_listen(client, hdr);
-				} else if (!strcmp(message, "Connect")) {
-					uint64_t val;
-					uint16_t portnum = 0;
-					uint32_t device_id = 0;
-					free(message);
-					// get device id
-					node = plist_dict_get_item(dict, "DeviceID");
-					if (!node) {
-						usbmuxd_log(LL_ERROR, "Received connect request without device_id!");
-						plist_free(dict);
-						if (send_result(client, hdr->tag, RESULT_BADDEV) < 0)
-							return -1;
-						return 0;
-					}
-					val = 0;
-					plist_get_uint_val(node, &val);
-					device_id = (uint32_t)val;
-
-					// get port number
-					node = plist_dict_get_item(dict, "PortNumber");
-					if (!node) {
-						usbmuxd_log(LL_ERROR, "Received connect request without port number!");
-						plist_free(dict);
-						return send_bad_command(client, hdr->tag);
-					}
-					val = 0;
-					plist_get_uint_val(node, &val);
-					portnum = (uint16_t)val;
-					plist_free(dict);
-
-					return start_connect(device_id, portnum, client, hdr->tag);
-				} else if (!strcmp(message, "ListDevices")) {
-					free(message);
-					plist_free(dict);
-					if (send_device_list(client, hdr->tag) < 0)
-						return -1;
-					return 0;
-				} else if (!strcmp(message, "ListListeners")) {
-					free(message);
-					plist_free(dict);
-					if (send_listener_list(client, hdr->tag) < 0)
-						return -1;
-					return 0;
-				} else if (!strcmp(message, "ReadBUID")) {
-					free(message);
-					plist_free(dict);
-					if (send_system_buid(client, hdr->tag) < 0)
-						return -1;
-					return 0;
-				} else if (!strcmp(message, "ReadPairRecord")) {
-					free(message);
-					char* record_id = plist_dict_get_string_val(dict, "PairRecordID");
-					plist_free(dict);
-
-					res = send_pair_record(client, hdr->tag, record_id);
-					if (record_id)
-						free(record_id);
-					if (res < 0)
-						return -1;
-					return 0;
-				} else if (!strcmp(message, "SavePairRecord")) {
-					uint32_t rval = RESULT_OK;
-					free(message);
-					char* record_id = plist_dict_get_string_val(dict, "PairRecordID");
-					char* record_data = NULL;
-					uint64_t record_size = 0;
-					plist_t rdata = plist_dict_get_item(dict, "PairRecordData");
-					if (plist_get_node_type(rdata) == PLIST_DATA) {
-						plist_get_data_val(rdata, &record_data, &record_size);
-					}
-
-					if (record_id && record_data) {
-						res = config_set_device_record(record_id, record_data, record_size);
-						if (res < 0) {
-							rval = -res;
-						} else {
-							plist_t p_dev_id = plist_dict_get_item(dict, "DeviceID");
-							uint32_t dev_id = 0;
-							if (plist_get_node_type(p_dev_id) == PLIST_UINT) {
-								uint64_t u_dev_id = 0;
-								plist_get_uint_val(p_dev_id, &u_dev_id);
-								dev_id = (uint32_t)u_dev_id;
-							}
-							if (dev_id > 0) {
-								struct device_info *devs = NULL;
-								struct device_info *dev;
-								int i;
-								int count = device_get_list(1, &devs);
-								int found = 0;
-								dev = devs;
-								for (i = 0; devs && i < count; i++, dev++) {
-									if ((uint32_t)dev->id == dev_id && (strcmp(dev->serial, record_id) == 0)) {
-										found++;
-										break;
-									}
-								}
-								if (!found) {
-									usbmuxd_log(LL_ERROR, "ERROR: SavePairRecord: DeviceID %d (%s) is not connected\n", dev_id, record_id);
-								} else {
-									client_device_paired(dev_id);
-								}
-								free(devs);
-							}
-						}
-						free(record_id);
-					} else {
-						rval = EINVAL;
-					}
-					free(record_data);
-					plist_free(dict);
-					if (send_result(client, hdr->tag, rval) < 0)
-						return -1;
-					return 0;
-				} else if (!strcmp(message, "DeletePairRecord")) {
-					uint32_t rval = RESULT_OK;
-					free(message);
-					char* record_id = plist_dict_get_string_val(dict, "PairRecordID");
-					plist_free(dict);
-					if (record_id) {
-						res = config_remove_device_record(record_id);
-						if (res < 0) {
-							rval = -res;
-						}
-						free(record_id);
-					} else {
-						rval = EINVAL;
-					}
-					if (send_result(client, hdr->tag, rval) < 0)
-						return -1;
-					return 0;
-				} else {
-					usbmuxd_log(LL_ERROR, "Unexpected command '%s' received!", message);
-					free(message);
-					plist_free(dict);
-					return send_bad_command(client, hdr->tag);
-				}
-			}
-			// should not be reached?!
-			return -1;
+			return client_plist_command(client, hdr);
 		case MESSAGE_LISTEN:
 			return start_listen(client, hdr);
 		case MESSAGE_CONNECT:
