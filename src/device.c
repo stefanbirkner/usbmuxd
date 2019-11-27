@@ -40,6 +40,7 @@
 #include "client.h"
 #include "preflight.h"
 #include "usb.h"
+#include "usb_device.h"
 #include "utils.h"
 #include "log.h"
 
@@ -232,8 +233,8 @@ static int send_packet(struct mux_device *dev, enum mux_protocol proto, void *he
 	if(data && length)
 		memcpy(buffer + mux_header_size + hdrlen, data, length);
 
-	if((res = usb_send(dev->usbdev, buffer, total)) < 0) {
-		usbmuxd_log(LL_ERROR, "usb_send failed while sending packet (len %d) to device %d: %d", total, dev->id, res);
+	if((res = usb_device_send(dev->usbdev, buffer, total)) < 0) {
+		usbmuxd_log(LL_ERROR, "usb_device_send failed while sending packet (len %d) to device %d: %d", total, dev->id, res);
 		free(buffer);
 		return res;
 	}
@@ -581,15 +582,15 @@ static void device_version_input(struct mux_device *dev, struct version_header *
 		send_packet(dev, MUX_PROTO_SETUP, NULL, "\x07", 1);
 	}
 
-	usbmuxd_log(LL_NOTICE, "Connected to v%d.%d device %d on location 0x%x with serial number %s", dev->version, vh->minor, dev->id, usb_get_location(dev->usbdev), usb_get_serial(dev->usbdev));
+	usbmuxd_log(LL_NOTICE, "Connected to v%d.%d device %d on location 0x%x with serial number %s", dev->version, vh->minor, dev->id, usb_device_get_location(dev->usbdev), usb_device_get_serial(dev->usbdev));
 	dev->state = MUXDEV_ACTIVE;
 	collection_init(&dev->connections);
 	struct device_info info;
 	info.id = dev->id;
-	info.location = usb_get_location(dev->usbdev);
-	info.serial = usb_get_serial(dev->usbdev);
-	info.pid = usb_get_pid(dev->usbdev);
-	info.speed = usb_get_speed(dev->usbdev);
+	info.location = usb_device_get_location(dev->usbdev);
+	info.serial = usb_device_get_serial(dev->usbdev);
+	info.pid = usb_device_get_pid(dev->usbdev);
+	info.speed = usb_device_get_speed(dev->usbdev);
 	preflight_worker_device_add(&info);
 }
 
@@ -738,7 +739,7 @@ void device_data_input(struct usb_device *usbdev, unsigned char *buffer, uint32_
 	} ENDFOREACH
 	pthread_mutex_unlock(&device_list_mutex);
 	if(!dev) {
-		usbmuxd_log(LL_WARNING, "Cannot find device entry for RX input from USB device %p on location 0x%x", usbdev, usb_get_location(usbdev));
+		usbmuxd_log(LL_WARNING, "Cannot find device entry for RX input from USB device %p on location 0x%x", usbdev, usb_device_get_location(usbdev));
 		return;
 	}
 
@@ -832,7 +833,7 @@ int device_add(struct usb_device *usbdev)
 	int res;
 	int id = get_next_device_id();
 	struct mux_device *dev;
-	usbmuxd_log(LL_NOTICE, "Connecting to new device on location 0x%x as ID %d", usb_get_location(usbdev), id);
+	usbmuxd_log(LL_NOTICE, "Connecting to new device on location 0x%x as ID %d", usb_device_get_location(usbdev), id);
 	dev = malloc(sizeof(struct mux_device));
 	dev->id = id;
 	dev->usbdev = usbdev;
@@ -864,7 +865,7 @@ void device_remove(struct usb_device *usbdev)
 	pthread_mutex_lock(&device_list_mutex);
 	FOREACH(struct mux_device *dev, &device_list) {
 		if(dev->usbdev == usbdev) {
-			usbmuxd_log(LL_NOTICE, "Removed device %d on location 0x%x", dev->id, usb_get_location(usbdev));
+			usbmuxd_log(LL_NOTICE, "Removed device %d on location 0x%x", dev->id, usb_device_get_location(usbdev));
 			if(dev->state == MUXDEV_ACTIVE) {
 				dev->state = MUXDEV_DEAD;
 				FOREACH(struct mux_connection *conn, &dev->connections) {
@@ -885,7 +886,7 @@ void device_remove(struct usb_device *usbdev)
 	} ENDFOREACH
 	pthread_mutex_unlock(&device_list_mutex);
 
-	usbmuxd_log(LL_WARNING, "Cannot find device entry while removing USB device %p on location 0x%x", usbdev, usb_get_location(usbdev));
+	usbmuxd_log(LL_WARNING, "Cannot find device entry while removing USB device %p on location 0x%x", usbdev, usb_device_get_location(usbdev));
 }
 
 void device_set_visible(int device_id)
@@ -943,10 +944,10 @@ int device_get_list(int include_hidden, struct device_info **devices)
 	FOREACH(struct mux_device *dev, &dev_list) {
 		if((dev->state == MUXDEV_ACTIVE) && (include_hidden || dev->visible)) {
 			p->id = dev->id;
-			p->serial = usb_get_serial(dev->usbdev);
-			p->location = usb_get_location(dev->usbdev);
-			p->pid = usb_get_pid(dev->usbdev);
-			p->speed = usb_get_speed(dev->usbdev);
+			p->serial = usb_device_get_serial(dev->usbdev);
+			p->location = usb_device_get_location(dev->usbdev);
+			p->pid = usb_device_get_pid(dev->usbdev);
+			p->speed = usb_device_get_speed(dev->usbdev);
 			count++;
 			p++;
 		}

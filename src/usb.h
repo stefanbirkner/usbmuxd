@@ -29,10 +29,6 @@
 #define INTERFACE_SUBCLASS 254
 #define INTERFACE_PROTOCOL 2
 
-// libusb fragments packets larger than this (usbfs limitation)
-// on input, this creates race conditions and other issues
-#define USB_MRU 16384
-
 // max transmission packet size
 // libusb fragments these too, but doesn't send ZLPs so we're safe
 // but we need to send a ZLP ourselves at the end (see usb-linux.c)
@@ -48,17 +44,10 @@
 #define PID_RANGE_MAX 0x12af
 #define PID_APPLE_T2_COPROCESSOR 0x8600
 
-struct usb_device;
-
 int usb_init(void);
 void usb_shutdown(void);
-const char *usb_get_serial(struct usb_device *dev);
-uint32_t usb_get_location(struct usb_device *dev);
-uint16_t usb_get_pid(struct usb_device *dev);
-uint64_t usb_get_speed(struct usb_device *dev);
 void usb_get_fds(struct fdlist *list);
 int usb_get_timeout(void);
-int usb_send(struct usb_device *dev, const unsigned char *buf, int length);
 int usb_discover(void);
 void usb_autodiscover(int enable);
 int usb_process(void);

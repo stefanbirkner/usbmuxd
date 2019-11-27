@@ -27,6 +27,7 @@ usbmuxd_SOURCES = \
 	log.c log.h \
 	usbmuxd-proto.h \
 	usb.c usb.h \
+	usb_device.c usb_device.h \
 	utils.c utils.h \
 	conf.c conf.h \
 	main.c

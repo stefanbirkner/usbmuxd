@@ -21,6 +21,7 @@
 #define DEVICE_H
 
 #include "usb.h"
+#include "usb_device.h"
 #include "client.h"
 
 struct device_info {
