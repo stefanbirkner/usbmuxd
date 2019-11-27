@@ -119,29 +119,36 @@ static void tx_callback(struct libusb_transfer *xfer)
 	libusb_free_transfer(xfer);
 }
 
+static int send(struct usb_device *dev, void *buf, int length)
+{
+	struct libusb_transfer *xfer = libusb_alloc_transfer(0);
+	int res;
+	libusb_fill_bulk_transfer(xfer, dev->dev, dev->ep_out, buf, length, tx_callback, dev, 0);
+	res = libusb_submit_transfer(xfer);
+	if (res < 0) {
+		libusb_free_transfer(xfer);
+	} else {
+		collection_add(&dev->tx_xfers, xfer);
+	}
+	return res;
+}
+
 int usb_device_send(struct usb_device *dev, const unsigned char *buf, int length)
 {
-	int res;
-	struct libusb_transfer *xfer = libusb_alloc_transfer(0);
-	libusb_fill_bulk_transfer(xfer, dev->dev, dev->ep_out, (void*)buf, length, tx_callback, dev, 0);
-	if((res = libusb_submit_transfer(xfer)) < 0) {
+	int res = send(dev, (void*) buf, length);
+	if (res < 0) {
 		usbmuxd_log(LL_ERROR, "Failed to submit TX transfer %p len %d to device %d-%d: %s", buf, length, dev->bus, dev->address, libusb_error_name(res));
-		libusb_free_transfer(xfer);
 		return res;
 	}
-	collection_add(&dev->tx_xfers, xfer);
 	if (length % dev->wMaxPacketSize == 0) {
 		usbmuxd_log(LL_DEBUG, "Send ZLP");
 		// Send Zero Length Packet
-		xfer = libusb_alloc_transfer(0);
 		void *buffer = malloc(1);
-		libusb_fill_bulk_transfer(xfer, dev->dev, dev->ep_out, buffer, 0, tx_callback, dev, 0);
-		if((res = libusb_submit_transfer(xfer)) < 0) {
+		res = send(dev, buffer, 0);
+		if (res < 0) {
 			usbmuxd_log(LL_ERROR, "Failed to submit TX ZLP transfer to device %d-%d: %s", dev->bus, dev->address, libusb_error_name(res));
-			libusb_free_transfer(xfer);
 			return res;
 		}
-		collection_add(&dev->tx_xfers, xfer);
 	}
 	return 0;
 }
