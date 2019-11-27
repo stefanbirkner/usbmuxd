@@ -560,6 +560,14 @@ void device_abort_connect(int device_id, struct mux_client *client)
 	}
 }
 
+static void populate_info(struct usb_device *usbdev, struct device_info *info)
+{
+	info->location = usb_device_get_location(usbdev);
+	info->serial = usb_device_get_serial(usbdev);
+	info->pid = usb_device_get_pid(usbdev);
+	info->speed = usb_device_get_speed(usbdev);
+}
+
 static void device_version_input(struct mux_device *dev, struct version_header *vh)
 {
 	if(dev->state != MUXDEV_INIT) {
@@ -587,10 +595,7 @@ static void device_version_input(struct mux_device *dev, struct version_header *
 	collection_init(&dev->connections);
 	struct device_info info;
 	info.id = dev->id;
-	info.location = usb_device_get_location(dev->usbdev);
-	info.serial = usb_device_get_serial(dev->usbdev);
-	info.pid = usb_device_get_pid(dev->usbdev);
-	info.speed = usb_device_get_speed(dev->usbdev);
+	populate_info(dev->usbdev, &info);
 	preflight_worker_device_add(&info);
 }
 
@@ -944,10 +949,7 @@ int device_get_list(int include_hidden, struct device_info **devices)
 	FOREACH(struct mux_device *dev, &dev_list) {
 		if((dev->state == MUXDEV_ACTIVE) && (include_hidden || dev->visible)) {
 			p->id = dev->id;
-			p->serial = usb_device_get_serial(dev->usbdev);
-			p->location = usb_device_get_location(dev->usbdev);
-			p->pid = usb_device_get_pid(dev->usbdev);
-			p->speed = usb_device_get_speed(dev->usbdev);
+			populate_info(dev->usbdev, p);
 			count++;
 			p++;
 		}
