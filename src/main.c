@@ -322,20 +322,20 @@ static int handle_events(int listenfd, struct fdlist *pollfds)
 
 	for(i=0; i<pollfds->count; i++) {
 		if(pollfds->fds[i].revents) {
-			if(!done_usb && pollfds->owners[i] == FD_USB) {
-				if(usb_process() < 0) {
-					usbmuxd_log(LL_FATAL, "usb_process() failed");
-					return -1;
+			if(pollfds->owners[i] == FD_USB) {
+				if (!done_usb) {
+					if(usb_process() < 0) {
+						usbmuxd_log(LL_FATAL, "usb_process() failed");
+						return -1;
+					}
 				}
 				done_usb = 1;
-			}
-			if(pollfds->owners[i] == FD_LISTEN) {
+			} else if(pollfds->owners[i] == FD_LISTEN) {
 				if(client_accept(listenfd) < 0) {
 					usbmuxd_log(LL_FATAL, "client_accept() failed");
 					return -1;
 				}
-			}
-			if(pollfds->owners[i] == FD_CLIENT) {
+			} else if(pollfds->owners[i] == FD_CLIENT) {
 				client_process(pollfds->fds[i].fd, pollfds->fds[i].revents);
 			}
 		}
