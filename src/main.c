@@ -315,6 +315,35 @@ static int ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout
 }
 #endif
 
+static int handle_events(int listenfd, struct fdlist *pollfds)
+{
+	int i;
+	int done_usb = 0;
+
+	for(i=0; i<pollfds->count; i++) {
+		if(pollfds->fds[i].revents) {
+			if(!done_usb && pollfds->owners[i] == FD_USB) {
+				if(usb_process() < 0) {
+					usbmuxd_log(LL_FATAL, "usb_process() failed");
+					return -1;
+				}
+				done_usb = 1;
+			}
+			if(pollfds->owners[i] == FD_LISTEN) {
+				if(client_accept(listenfd) < 0) {
+					usbmuxd_log(LL_FATAL, "client_accept() failed");
+					return -1;
+				}
+			}
+			if(pollfds->owners[i] == FD_CLIENT) {
+				client_process(pollfds->fds[i].fd, pollfds->fds[i].revents);
+			}
+		}
+	}
+
+	return 0;
+}
+
 static void collect_fds(int listenfd, struct fdlist *fds)
 {
 	fdlist_reset(fds);
@@ -340,7 +369,7 @@ static void get_timeout(struct timespec *tspec)
 
 static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 {
-	int cnt, i;
+	int cnt, res;
 	struct timespec tspec;
 
 	sigset_t empty_sigset;
@@ -372,26 +401,9 @@ static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 			}
 			device_check_timeouts();
 		} else {
-			int done_usb = 0;
-			for(i=0; i<pollfds->count; i++) {
-				if(pollfds->fds[i].revents) {
-					if(!done_usb && pollfds->owners[i] == FD_USB) {
-						if(usb_process() < 0) {
-							usbmuxd_log(LL_FATAL, "usb_process() failed");
-							return -1;
-						}
-						done_usb = 1;
-					}
-					if(pollfds->owners[i] == FD_LISTEN) {
-						if(client_accept(listenfd) < 0) {
-							usbmuxd_log(LL_FATAL, "client_accept() failed");
-							return -1;
-						}
-					}
-					if(pollfds->owners[i] == FD_CLIENT) {
-						client_process(pollfds->fds[i].fd, pollfds->fds[i].revents);
-					}
-				}
+			res = handle_events(listenfd, pollfds);
+			if (res < 0) {
+				return res;
 			}
 		}
 	}
