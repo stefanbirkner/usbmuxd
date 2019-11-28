@@ -415,7 +415,7 @@ static int main_loop(int listenfd)
 	int res = 0;
 	struct fdlist pollfds;
 
-	fdlist_create(&pollfds);
+	fdlist_init(&pollfds);
 	res = main_loop_for_fdlist(listenfd, &pollfds);
 	fdlist_free(&pollfds);
 	return res;

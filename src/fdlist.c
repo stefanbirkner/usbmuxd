@@ -24,7 +24,7 @@
 
 #include "fdlist.h"
 
-void fdlist_create(struct fdlist *list)
+void fdlist_init(struct fdlist *list)
 {
 	list->count = 0;
 	list->capacity = 4;

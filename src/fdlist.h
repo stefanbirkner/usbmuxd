@@ -37,7 +37,7 @@ struct fdlist {
 	struct pollfd *fds;
 };
 
-void fdlist_create(struct fdlist *list);
+void fdlist_init(struct fdlist *list);
 void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events);
 void fdlist_free(struct fdlist *list);
 void fdlist_reset(struct fdlist *list);
