@@ -315,7 +315,7 @@ static int ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout
 }
 #endif
 
-static int handle_events(int listenfd, struct fdlist *pollfds)
+static int handle_events(struct fdlist *pollfds)
 {
 	int i;
 	int done_usb = 0;
@@ -331,7 +331,7 @@ static int handle_events(int listenfd, struct fdlist *pollfds)
 				}
 				done_usb = 1;
 			} else if(pollfds->owners[i] == FD_LISTEN) {
-				if(client_accept(listenfd) < 0) {
+				if(client_accept(pollfds->fds[i].fd) < 0) {
 					usbmuxd_log(LL_FATAL, "client_accept() failed");
 					return -1;
 				}
@@ -401,7 +401,7 @@ static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 			}
 			device_check_timeouts();
 		} else {
-			res = handle_events(listenfd, pollfds);
+			res = handle_events(pollfds);
 			if (res < 0) {
 				return res;
 			}
