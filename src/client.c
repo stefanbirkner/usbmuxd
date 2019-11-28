@@ -303,7 +303,7 @@ void client_get_fds(struct fdlist *list)
 {
 	pthread_mutex_lock(&client_list_mutex);
 	FOREACH(struct mux_client *client, &client_list) {
-		fdlist_add(list, FD_CLIENT, client->fd, client->events);
+		fdlist_add_client_fd(list, client->fd, client->events);
 	} ENDFOREACH
 	pthread_mutex_unlock(&client_list_mutex);
 }

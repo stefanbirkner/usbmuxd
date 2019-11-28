@@ -38,7 +38,9 @@ struct fdlist {
 };
 
 void fdlist_init(struct fdlist *list);
-void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events);
+void fdlist_add_client_fd(struct fdlist *list, int fd, short events);
+void fdlist_add_socket_fd(struct fdlist *list, int fd);
+void fdlist_add_usb_fd(struct fdlist *list, int fd, short events);
 void fdlist_free(struct fdlist *list);
 void fdlist_reset(struct fdlist *list);
 

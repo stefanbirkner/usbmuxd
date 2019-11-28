@@ -527,7 +527,7 @@ void usb_get_fds(struct fdlist *list)
 	}
 	p = usbfds;
 	while(*p) {
-		fdlist_add(list, FD_USB, (*p)->fd, (*p)->events);
+		fdlist_add_usb_fd(list, (*p)->fd, (*p)->events);
 		p++;
 	}
 	free(usbfds);

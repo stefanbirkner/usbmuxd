@@ -31,7 +31,8 @@ void fdlist_init(struct fdlist *list)
 	list->owners = malloc(sizeof(*list->owners) * list->capacity);
 	list->fds = malloc(sizeof(*list->fds) * list->capacity);
 }
-void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
+
+static void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
 {
 	if(list->count == list->capacity) {
 		list->capacity *= 2;
@@ -43,6 +44,21 @@ void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
 	list->fds[list->count].events = events;
 	list->fds[list->count].revents = 0;
 	list->count++;
+}
+
+void fdlist_add_client_fd(struct fdlist *list, int fd, short events)
+{
+	fdlist_add(list, FD_CLIENT, fd, events);
+}
+
+void fdlist_add_socket_fd(struct fdlist *list, int fd)
+{
+	fdlist_add(list, FD_LISTEN, fd, POLLIN);
+}
+
+void fdlist_add_usb_fd(struct fdlist *list, int fd, short events)
+{
+	fdlist_add(list, FD_USB, fd, events);
 }
 
 void fdlist_free(struct fdlist *list)
