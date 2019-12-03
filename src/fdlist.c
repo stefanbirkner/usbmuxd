@@ -72,6 +72,20 @@ int fdlist_is_socket_ready(struct fdlist *list)
 	return list->fds[0].revents;
 }
 
+int fdlist_is_usb_ready(struct fdlist *list)
+{
+	int i;
+	int res = 0;
+
+	for(i=0; i<list->count; i++) {
+		if(list->owners[i] == FD_USB && list->fds[i].revents) {
+			res = 1;
+		}
+	}
+
+	return res;
+}
+
 void fdlist_free(struct fdlist *list)
 {
 	list->count = 0;
