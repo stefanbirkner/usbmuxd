@@ -62,6 +62,16 @@ void fdlist_add_usb_fd(struct fdlist *list, int fd, short events)
 	fdlist_add(list, FD_USB, fd, events);
 }
 
+int fdlist_get_socket_fd(struct fdlist *list)
+{
+	return list->fds[0].fd;
+}
+
+int fdlist_is_socket_ready(struct fdlist *list)
+{
+	return list->fds[0].revents;
+}
+
 void fdlist_free(struct fdlist *list)
 {
 	list->count = 0;

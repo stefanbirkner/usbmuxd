@@ -317,8 +317,16 @@ static int ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout
 
 static int handle_events(struct fdlist *pollfds)
 {
-	int i;
+	int i, fd;
 	int done_usb = 0;
+
+	if(fdlist_is_socket_ready(pollfds)) {
+		fd = fdlist_get_socket_fd(pollfds);
+		if(client_accept(fd) < 0) {
+			usbmuxd_log(LL_FATAL, "client_accept() failed");
+			return -1;
+		}
+	}
 
 	for(i=0; i<pollfds->count; i++) {
 		if(pollfds->fds[i].revents) {
@@ -330,11 +338,6 @@ static int handle_events(struct fdlist *pollfds)
 					}
 				}
 				done_usb = 1;
-			} else if(pollfds->owners[i] == FD_LISTEN) {
-				if(client_accept(pollfds->fds[i].fd) < 0) {
-					usbmuxd_log(LL_FATAL, "client_accept() failed");
-					return -1;
-				}
 			} else if(pollfds->owners[i] == FD_CLIENT) {
 				client_process(pollfds->fds[i].fd, pollfds->fds[i].revents);
 			}
