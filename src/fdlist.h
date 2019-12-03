@@ -39,12 +39,11 @@ struct fdlist {
 	sigset_t *empty_sigset;
 };
 
-void fdlist_init(struct fdlist *list);
+void fdlist_init(struct fdlist *list, int socket_fd);
 void fdlist_add_client_fd(struct fdlist *list, int fd, short events);
-void fdlist_add_socket_fd(struct fdlist *list, int fd);
 void fdlist_add_usb_fd(struct fdlist *list, int fd, short events);
 void fdlist_free(struct fdlist *list);
 int fdlist_ppoll(struct fdlist *list, struct timespec *timeout_ts);
-void fdlist_reset(struct fdlist *list);
+void fdlist_remove_client_and_usb_fds(struct fdlist *list);
 
 #endif

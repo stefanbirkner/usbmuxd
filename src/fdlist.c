@@ -28,15 +28,6 @@
 
 #include "fdlist.h"
 
-void fdlist_init(struct fdlist *list)
-{
-	list->count = 0;
-	list->capacity = 4;
-	list->owners = malloc(sizeof(*list->owners) * list->capacity);
-	list->fds = malloc(sizeof(*list->fds) * list->capacity);
-	sigemptyset(list->empty_sigset); // unmask all signals
-}
-
 static void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
 {
 	if(list->count == list->capacity) {
@@ -51,14 +42,19 @@ static void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short ev
 	list->count++;
 }
 
+void fdlist_init(struct fdlist *list, int socket_fd)
+{
+	list->count = 0;
+	list->capacity = 4;
+	list->owners = malloc(sizeof(*list->owners) * list->capacity);
+	list->fds = malloc(sizeof(*list->fds) * list->capacity);
+	sigemptyset(list->empty_sigset); // unmask all signals
+	fdlist_add(list, FD_LISTEN, socket_fd, POLLIN);
+}
+
 void fdlist_add_client_fd(struct fdlist *list, int fd, short events)
 {
 	fdlist_add(list, FD_CLIENT, fd, events);
-}
-
-void fdlist_add_socket_fd(struct fdlist *list, int fd)
-{
-	fdlist_add(list, FD_LISTEN, fd, POLLIN);
 }
 
 void fdlist_add_usb_fd(struct fdlist *list, int fd, short events)
@@ -78,10 +74,11 @@ void fdlist_free(struct fdlist *list)
 
 int fdlist_ppoll(struct fdlist *list, struct timespec *timeout_ts)
 {
+	list->fds[0].revents = 0; //reset socket fd
 	return ppoll(list->fds, list->count, timeout_ts, list->empty_sigset);
 }
 
-void fdlist_reset(struct fdlist *list)
+void fdlist_remove_client_and_usb_fds(struct fdlist *list)
 {
-	list->count = 0;
+	list->count = 1;
 }

@@ -344,10 +344,9 @@ static int handle_events(struct fdlist *pollfds)
 	return 0;
 }
 
-static void collect_fds(int listenfd, struct fdlist *fds)
+static void collect_fds(struct fdlist *fds)
 {
-	fdlist_reset(fds);
-	fdlist_add_socket_fd(fds, listenfd);
+	fdlist_remove_client_and_usb_fds(fds);
 	usb_get_fds(fds);
 	client_get_fds(fds);
 	usbmuxd_log(LL_FLOOD, "fd count is %d", fds->count);
@@ -367,7 +366,7 @@ static void get_timeout(struct timespec *tspec)
 	tspec->tv_nsec = (timeout % 1000) * 1000000;
 }
 
-static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
+static int main_loop_for_fdlist(struct fdlist *pollfds)
 {
 	int cnt, res;
 	struct timespec tspec;
@@ -375,7 +374,7 @@ static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 	while(!should_exit) {
 		usbmuxd_log(LL_FLOOD, "main_loop iteration");
 		get_timeout(&tspec);
-		collect_fds(listenfd, pollfds);
+		collect_fds(pollfds);
 
 		cnt = fdlist_ppoll(pollfds, &tspec);
 		usbmuxd_log(LL_FLOOD, "poll() returned %d", cnt);
@@ -412,8 +411,8 @@ static int main_loop(int listenfd)
 	int res = 0;
 	struct fdlist pollfds;
 
-	fdlist_init(&pollfds);
-	res = main_loop_for_fdlist(listenfd, &pollfds);
+	fdlist_init(&pollfds, listenfd);
+	res = main_loop_for_fdlist(&pollfds);
 	fdlist_free(&pollfds);
 	return res;
 }
