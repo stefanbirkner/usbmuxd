@@ -23,6 +23,7 @@
 #define FDLIST_H
 
 #include <poll.h>
+#include <signal.h>
 
 enum fdowner {
 	FD_LISTEN,
@@ -35,6 +36,7 @@ struct fdlist {
 	int capacity;
 	enum fdowner *owners;
 	struct pollfd *fds;
+	sigset_t *empty_sigset;
 };
 
 void fdlist_init(struct fdlist *list);
@@ -42,6 +44,7 @@ void fdlist_add_client_fd(struct fdlist *list, int fd, short events);
 void fdlist_add_socket_fd(struct fdlist *list, int fd);
 void fdlist_add_usb_fd(struct fdlist *list, int fd, short events);
 void fdlist_free(struct fdlist *list);
+int fdlist_ppoll(struct fdlist *list, struct timespec *timeout_ts);
 void fdlist_reset(struct fdlist *list);
 
 #endif

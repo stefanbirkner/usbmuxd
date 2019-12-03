@@ -372,15 +372,12 @@ static int main_loop_for_fdlist(int listenfd, struct fdlist *pollfds)
 	int cnt, res;
 	struct timespec tspec;
 
-	sigset_t empty_sigset;
-	sigemptyset(&empty_sigset); // unmask all signals
-
 	while(!should_exit) {
 		usbmuxd_log(LL_FLOOD, "main_loop iteration");
 		get_timeout(&tspec);
 		collect_fds(listenfd, pollfds);
 
-		cnt = ppoll(pollfds->fds, pollfds->count, &tspec, &empty_sigset);
+		cnt = fdlist_ppoll(pollfds, &tspec);
 		usbmuxd_log(LL_FLOOD, "poll() returned %d", cnt);
 		if(cnt == -1) {
 			if(errno == EINTR) {

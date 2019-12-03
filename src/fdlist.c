@@ -20,6 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define _GNU_SOURCE 
+
+#include <poll.h>
+#include <signal.h>
 #include <stdlib.h>
 
 #include "fdlist.h"
@@ -30,6 +34,7 @@ void fdlist_init(struct fdlist *list)
 	list->capacity = 4;
 	list->owners = malloc(sizeof(*list->owners) * list->capacity);
 	list->fds = malloc(sizeof(*list->fds) * list->capacity);
+	sigemptyset(list->empty_sigset); // unmask all signals
 }
 
 static void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
@@ -69,6 +74,11 @@ void fdlist_free(struct fdlist *list)
 	list->owners = NULL;
 	free(list->fds);
 	list->fds = NULL;
+}
+
+int fdlist_ppoll(struct fdlist *list, struct timespec *timeout_ts)
+{
+	return ppoll(list->fds, list->count, timeout_ts, list->empty_sigset);
 }
 
 void fdlist_reset(struct fdlist *list)
