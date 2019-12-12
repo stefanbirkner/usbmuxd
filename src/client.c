@@ -908,6 +908,18 @@ static void output_buffer_process(struct mux_client *client)
 	}
 }
 
+static int complete(struct mux_client *client, size_t expected_size)
+{
+	int res = recv(
+		client->fd,
+		client->ib_buf + client->ib_size,
+		expected_size - client->ib_size,
+		0);
+	if(res > 0)
+		client->ib_size += res;
+	return res;
+}
+
 static int message_incomplete(struct mux_client *client)
 {
 	struct usbmuxd_header *header = (void*)client->ib_buf;
@@ -917,14 +929,8 @@ static int message_incomplete(struct mux_client *client)
 static int complete_message(struct mux_client *client)
 {
 	struct usbmuxd_header *header = (void*)client->ib_buf;
-	int res = recv(
-		client->fd,
-		client->ib_buf + client->ib_size,
-		header->length - client->ib_size,
-		0);
-	if(res > 0)
-		client->ib_size += res;
-	return res;
+	uint32_t message_length = header->length;
+	return complete(client, message_length);
 }
 
 static int header_incomplete(struct mux_client *client)
@@ -934,14 +940,8 @@ static int header_incomplete(struct mux_client *client)
 
 static int complete_header(struct mux_client *client)
 {
-	int res = recv(
-		client->fd,
-		client->ib_buf + client->ib_size,
-		sizeof(struct usbmuxd_header) - client->ib_size,
-		0);
-	if(res > 0)
-		client->ib_size += res;
-	return res;
+	size_t header_length = sizeof(struct usbmuxd_header);
+	return complete(client, header_length);
 }
 
 static void input_buffer_process(struct mux_client *client)
