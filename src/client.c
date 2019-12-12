@@ -914,6 +914,19 @@ static int message_incomplete(struct mux_client *client)
 	return client->ib_size < header->length;
 }
 
+static int complete_message(struct mux_client *client)
+{
+	struct usbmuxd_header *header = (void*)client->ib_buf;
+	int res = recv(
+		client->fd,
+		client->ib_buf + client->ib_size,
+		header->length - client->ib_size,
+		0);
+	if(res > 0)
+		client->ib_size += res;
+	return res;
+}
+
 static int header_incomplete(struct mux_client *client)
 {
 	return client->ib_size < sizeof(struct usbmuxd_header);
@@ -963,7 +976,7 @@ static void input_buffer_process(struct mux_client *client)
 	if(message_incomplete(client)) {
 		if(did_read)
 			return; //maybe we would block, so defer to next loop
-		res = recv(client->fd, client->ib_buf + client->ib_size, hdr->length - client->ib_size, 0);
+		res = complete_message(client);
 		if(res < 0) {
 			usbmuxd_log(LL_ERROR, "Receive from client fd %d failed: %s", client->fd, strerror(errno));
 			client_close(client);
@@ -973,7 +986,6 @@ static void input_buffer_process(struct mux_client *client)
 			client_close(client);
 			return;
 		}
-		client->ib_size += res;
 		if(message_incomplete(client))
 			return;
 	}
