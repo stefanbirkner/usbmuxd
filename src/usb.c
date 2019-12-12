@@ -516,7 +516,7 @@ int usb_discover(void)
 	return valid_count;
 }
 
-void usb_get_fds(struct fdlist *list)
+void usb_add_pollfds(struct fdlist *list)
 {
 	const struct libusb_pollfd **usbfds;
 	const struct libusb_pollfd **p;

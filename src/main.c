@@ -346,7 +346,7 @@ static int handle_events(struct fdlist *pollfds)
 static void collect_fds(struct fdlist *fds)
 {
 	fdlist_remove_client_and_usb_fds(fds);
-	usb_get_fds(fds);
+	usb_add_pollfds(fds);
 	client_get_fds(fds);
 	usbmuxd_log(LL_FLOOD, "fd count is %d", fds->count);
 }

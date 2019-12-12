@@ -46,7 +46,7 @@
 
 int usb_init(void);
 void usb_shutdown(void);
-void usb_get_fds(struct fdlist *list);
+void usb_add_pollfds(struct fdlist *list);
 int usb_get_timeout(void);
 int usb_discover(void);
 void usb_autodiscover(int enable);
