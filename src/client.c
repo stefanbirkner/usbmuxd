@@ -907,11 +907,17 @@ static void output_buffer_process(struct mux_client *client)
 		memmove(client->ob_buf, client->ob_buf + res, client->ob_size);
 	}
 }
+
+static int header_incomplete(struct mux_client *client)
+{
+	return client->ib_size < sizeof(struct usbmuxd_header);
+}
+
 static void input_buffer_process(struct mux_client *client)
 {
 	int res;
 	int did_read = 0;
-	if(client->ib_size < sizeof(struct usbmuxd_header)) {
+	if(header_incomplete(client)) {
 		res = recv(client->fd, client->ib_buf + client->ib_size, sizeof(struct usbmuxd_header) - client->ib_size, 0);
 		if(res <= 0) {
 			if(res < 0)
@@ -922,7 +928,7 @@ static void input_buffer_process(struct mux_client *client)
 			return;
 		}
 		client->ib_size += res;
-		if(client->ib_size < sizeof(struct usbmuxd_header))
+		if(header_incomplete(client))
 			return;
 		did_read = 1;
 	}
