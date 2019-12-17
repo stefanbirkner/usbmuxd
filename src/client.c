@@ -915,7 +915,14 @@ static int complete(struct mux_client *client, size_t expected_size)
 		client->ib_buf + client->ib_size,
 		expected_size - client->ib_size,
 		0);
-	if(res > 0)
+
+	if(res < 0) {
+		usbmuxd_log(LL_ERROR, "Receive from client fd %d failed: %s", client->fd, strerror(errno));
+		client_close(client);
+	} else if(res == 0) {
+		usbmuxd_log(LL_INFO, "Client %d connection closed", client->fd);
+		client_close(client);
+	} else
 		client->ib_size += res;
 	return res;
 }
@@ -950,17 +957,12 @@ static void input_buffer_process(struct mux_client *client)
 	int did_read = 0;
 	if(header_incomplete(client)) {
 		res = complete_header(client);
-		if(res <= 0) {
-			if(res < 0)
-				usbmuxd_log(LL_ERROR, "Receive from client fd %d failed: %s", client->fd, strerror(errno));
-			else
-				usbmuxd_log(LL_INFO, "Client %d connection closed", client->fd);
-			client_close(client);
+		if(res <= 0)
 			return;
-		}
-		if(header_incomplete(client))
+		else if(header_incomplete(client))
 			return;
-		did_read = 1;
+		else
+			did_read = 1;
 	}
 	struct usbmuxd_header *hdr = (void*)client->ib_buf;
 	if(hdr->length > client->ib_capacity) {
@@ -977,16 +979,9 @@ static void input_buffer_process(struct mux_client *client)
 		if(did_read)
 			return; //maybe we would block, so defer to next loop
 		res = complete_message(client);
-		if(res < 0) {
-			usbmuxd_log(LL_ERROR, "Receive from client fd %d failed: %s", client->fd, strerror(errno));
-			client_close(client);
+		if(res <= 0)
 			return;
-		} else if(res == 0) {
-			usbmuxd_log(LL_INFO, "Client %d connection closed", client->fd);
-			client_close(client);
-			return;
-		}
-		if(message_incomplete(client))
+		else if(message_incomplete(client))
 			return;
 	}
 	handle_command(client, hdr);
