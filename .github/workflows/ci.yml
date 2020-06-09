@@ -1,0 +1,19 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: update package list
+      run: sudo apt-get update -y
+    - name: dependencies
+      run: sudo apt-get install -y libimobiledevice-dev libplist-dev libusb-1.0.0-dev
+    - name: autogen
+      run: ./autogen.sh
+    - name: make
+      run: make

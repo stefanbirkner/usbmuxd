@@ -1,5 +1,7 @@
 # Stefan Birkner's usbmuxd fork
 
+![build](https://github.com/stefanbirkner/usbmuxd/workflows/build/badge.svg)
+
 This is a fork of the usbmuxd repository. The indent of the fork is to
 make the code more readable. This means that at least in the `master`
 branch the fork's behaviour is the same like the original. Only the code
@@ -10,6 +12,9 @@ usbmuxd's code. The reason may be manifold (e.g. I'm usually developing
 software in other languages and this is my first C code for years).
 
 I hope that this refactored usbmuxd is helpful for you too.
+
+This fork has also a minimal CI integration. Every commit is build by
+[GitHub Actions](https://github.com/stefanbirkner/usbmuxd/actions).
 
 The plan is to keep this repository updated by regularly rebasing it
 against the original usbmuxd repository.
@@ -122,6 +127,11 @@ available command line options:
 usbmuxd --help
 man usbmuxd
 ```
+
+usbmuxd supports GitHub Actions for basic continuous integration. Your pull
+request will be automatically build by GitHub Actions.
+
+## Who/What/Where?
 
 ## Contributing
 
