@@ -109,6 +109,11 @@ usbmuxd --help
 man usbmuxd
 ```
 
+usbmuxd supports GitHub Actions for basic continuous integration. Your pull
+request will be automatically build by GitHub Actions.
+
+## Who/What/Where?
+
 ## Contributing
 
 We welcome contributions from anyone and are grateful for every pull request!
