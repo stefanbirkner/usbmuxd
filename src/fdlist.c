@@ -28,13 +28,18 @@
 
 #include "fdlist.h"
 
-static void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
+static void fdlist_ensure_space_for_another_fd(struct fdlist *list)
 {
 	if(list->count == list->capacity) {
 		list->capacity *= 2;
 		list->owners = realloc(list->owners, sizeof(*list->owners) * list->capacity);
 		list->fds = realloc(list->fds, sizeof(*list->fds) * list->capacity);
 	}
+}
+
+static void fdlist_add(struct fdlist *list, enum fdowner owner, int fd, short events)
+{
+	fdlist_ensure_space_for_another_fd(list);
 	list->owners[list->count] = owner;
 	list->fds[list->count].fd = fd;
 	list->fds[list->count].events = events;
