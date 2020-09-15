@@ -365,7 +365,7 @@ static void get_timeout(struct timespec *tspec)
 	tspec->tv_nsec = (timeout % 1000) * 1000000;
 }
 
-static int main_loop_for_fdlist(struct fdlist *pollfds)
+static void main_loop_for_fdlist(struct fdlist *pollfds)
 {
 	int cnt, res;
 	struct timespec tspec;
@@ -392,28 +392,27 @@ static int main_loop_for_fdlist(struct fdlist *pollfds)
 		} else if(cnt == 0) {
 			if(usb_process() < 0) {
 				usbmuxd_log(LL_FATAL, "usb_process() failed");
-				return -1;
+				usbmuxd_log(LL_FATAL, "main_loop failed");
+				break;
 			}
 			device_check_timeouts();
 		} else {
 			res = handle_events(pollfds);
 			if (res < 0) {
-				return res;
+				usbmuxd_log(LL_FATAL, "main_loop failed");
+				break;
 			}
 		}
 	}
-	return 0;
 }
 
-static int main_loop(int listenfd)
+static void main_loop(int listenfd)
 {
-	int res = 0;
 	struct fdlist pollfds;
 
 	fdlist_init(&pollfds, listenfd);
-	res = main_loop_for_fdlist(&pollfds);
+	main_loop_for_fdlist(&pollfds);
 	fdlist_free(&pollfds);
-	return res;
 }
 
 /**
@@ -918,9 +917,7 @@ int main(int argc, char *argv[])
 		usbmuxd_log(LL_NOTICE, "Enabled exit on SIGUSR1 if no devices are attached. Start a new instance with \"--exit\" to trigger.");
 	}
 
-	res = main_loop(listenfd);
-	if(res < 0)
-		usbmuxd_log(LL_FATAL, "main_loop failed");
+	main_loop(listenfd);
 
 	usbmuxd_log(LL_NOTICE, "usbmuxd shutting down");
 	device_kill_connections();
