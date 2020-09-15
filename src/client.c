@@ -171,6 +171,20 @@ int client_set_events(struct mux_client *client, short events)
 	return 0;
 }
 
+static void client_init2(struct mux_client *client, int fd)
+{
+	client->fd = fd;
+	client->ob_buf = malloc(REPLY_BUF_SIZE);
+	client->ob_size = 0;
+	client->ob_capacity = REPLY_BUF_SIZE;
+	client->ib_buf = malloc(CMD_BUF_SIZE);
+	client->ib_size = 0;
+	client->ib_capacity = CMD_BUF_SIZE;
+	client->state = CLIENT_COMMAND;
+	client->events = POLLIN;
+	client->info = NULL;
+}
+
 static void client_log_event(struct mux_client *client, const char *event)
 {
 #ifdef SO_PEERCRED
@@ -235,17 +249,7 @@ int client_accept(int listenfd)
 	struct mux_client *client;
 	client = malloc(sizeof(struct mux_client));
 	memset(client, 0, sizeof(struct mux_client));
-
-	client->fd = cfd;
-	client->ob_buf = malloc(REPLY_BUF_SIZE);
-	client->ob_size = 0;
-	client->ob_capacity = REPLY_BUF_SIZE;
-	client->ib_buf = malloc(CMD_BUF_SIZE);
-	client->ib_size = 0;
-	client->ib_capacity = CMD_BUF_SIZE;
-	client->state = CLIENT_COMMAND;
-	client->events = POLLIN;
-	client->info = NULL;
+	client_init2(client, cfd);
 
 	pthread_mutex_lock(&client_list_mutex);
 	client->number = client_number++;
