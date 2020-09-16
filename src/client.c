@@ -835,8 +835,9 @@ static int client_plist_command(struct mux_client *client, struct usbmuxd_header
 	return -1;
 }
 
-static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
+static int handle_command(struct mux_client *client)
 {
+	struct usbmuxd_header *hdr = (void*)client->ib_buf;
 	usbmuxd_log(LL_DEBUG, "Client %d command len %d ver %d msg %d tag %d", client->fd, hdr->length, hdr->version, hdr->message, hdr->tag);
 
 	if(client->state != CLIENT_COMMAND) {
@@ -975,6 +976,22 @@ static int client_try_complete_header(struct mux_client *client)
 	}
 }
 
+static int close_client_with_invalid_header(struct mux_client *client)
+{
+	struct usbmuxd_header *hdr = (void*)client->ib_buf;
+	if(hdr->length > client->ib_capacity) {
+		usbmuxd_log(LL_INFO, "Client %d message is too long (%d bytes)", client->fd, hdr->length);
+		client_close(client);
+		return -1;
+	}
+	if(hdr->length < sizeof(struct usbmuxd_header)) {
+		usbmuxd_log(LL_ERROR, "Client %d message is too short (%d bytes)", client->fd, hdr->length);
+		client_close(client);
+		return -1;
+	}
+	return 0;
+}
+
 static void input_buffer_process(struct mux_client *client)
 {
 	int res;
@@ -982,21 +999,13 @@ static void input_buffer_process(struct mux_client *client)
 	did_read = client_try_complete_header(client);
 	if (did_read < 0)
 		return;
-	struct usbmuxd_header *hdr = (void*)client->ib_buf;
-	if(hdr->length > client->ib_capacity) {
-		usbmuxd_log(LL_INFO, "Client %d message is too long (%d bytes)", client->fd, hdr->length);
-		client_close(client);
+	res = close_client_with_invalid_header(client);
+	if (res < 0)
 		return;
-	}
-	if(hdr->length < sizeof(struct usbmuxd_header)) {
-		usbmuxd_log(LL_ERROR, "Client %d message is too short (%d bytes)", client->fd, hdr->length);
-		client_close(client);
-		return;
-	}
 	res = client_try_complete_message(client, did_read);
 	if (res < 0)
 		return;
-	handle_command(client, hdr);
+	handle_command(client);
 	client->ib_size = 0;
 }
 
