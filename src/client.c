@@ -944,19 +944,29 @@ static int complete_header(struct mux_client *client)
 	return complete(client, header_length);
 }
 
-static void input_buffer_process(struct mux_client *client)
+static int client_try_complete_header(struct mux_client *client)
 {
 	int res;
-	int did_read = 0;
 	if(header_incomplete(client)) {
 		res = complete_header(client);
 		if(res <= 0)
-			return;
+			return -1;
 		else if(header_incomplete(client))
-			return;
+			return -1;
 		else
-			did_read = 1;
+			return 1;
+	} else {
+		return 0;
 	}
+}
+
+static void input_buffer_process(struct mux_client *client)
+{
+	int res;
+	int did_read;
+	did_read = client_try_complete_header(client);
+	if (did_read < 0)
+		return;
 	struct usbmuxd_header *hdr = (void*)client->ib_buf;
 	if(hdr->length > client->ib_capacity) {
 		usbmuxd_log(LL_INFO, "Client %d message is too long (%d bytes)", client->fd, hdr->length);
