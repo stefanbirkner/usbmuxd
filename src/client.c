@@ -206,6 +206,14 @@ static void client_log_event(struct mux_client *client, const char *event)
 #endif
 }
 
+static void client_list_add(struct mux_client *client)
+{
+	pthread_mutex_lock(&client_list_mutex);
+	client->number = client_number++;
+	collection_add(&client_list, client);
+	pthread_mutex_unlock(&client_list_mutex);
+}
+
 /**
  * Wait for an inbound connection on the usbmuxd socket
  * and create a new mux_client instance for it, and store
@@ -251,10 +259,7 @@ int client_accept(int listenfd)
 	memset(client, 0, sizeof(struct mux_client));
 	client_init2(client, cfd);
 
-	pthread_mutex_lock(&client_list_mutex);
-	client->number = client_number++;
-	collection_add(&client_list, client);
-	pthread_mutex_unlock(&client_list_mutex);
+	client_list_add(client);
 
 	client_log_event(client, "accepted");
 	return client->fd;
