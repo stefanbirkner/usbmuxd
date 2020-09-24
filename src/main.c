@@ -319,7 +319,7 @@ static int handle_events(struct fdlist *pollfds)
 {
 	int i, fd;
 
-	if(fdlist_is_socket_ready(pollfds)) {
+	if(fdlist_detected_new_socket_connection(pollfds)) {
 		fd = fdlist_get_socket_fd(pollfds);
 		if(client_accept(fd) < 0) {
 			usbmuxd_log(LL_FATAL, "client_accept() failed");

@@ -72,7 +72,7 @@ int fdlist_get_socket_fd(struct fdlist *list)
 	return list->fds[0].fd;
 }
 
-int fdlist_is_socket_ready(struct fdlist *list)
+int fdlist_detected_new_socket_connection(struct fdlist *list)
 {
 	return list->fds[0].revents;
 }
