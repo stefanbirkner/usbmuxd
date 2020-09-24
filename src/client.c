@@ -604,12 +604,16 @@ static int send_device_paired(struct mux_client *client, uint32_t device_id)
 	return res;
 }
 
-static int start_listen(struct mux_client *client)
+static int start_listen(struct mux_client *client, struct usbmuxd_header *hdr)
 {
 	struct device_info *devs = NULL;
 	struct device_info *dev;
 	int count, i;
 
+	if(send_result(client, hdr->tag, 0) < 0)
+		return -1;
+
+	usbmuxd_log(LL_DEBUG, "Client %d now LISTENING", client->fd);
 	client->state = CLIENT_LISTEN;
 
 	count = device_get_list(0, &devs);
@@ -725,10 +729,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 				if (!strcmp(message, "Listen")) {
 					free(message);
 					plist_free(dict);
-					if (send_result(client, hdr->tag, 0) < 0)
-						return -1;
-					usbmuxd_log(LL_DEBUG, "Client %d now LISTENING", client->fd);
-					return start_listen(client);
+					return start_listen(client, hdr);
 				} else if (!strcmp(message, "Connect")) {
 					uint64_t val;
 					uint16_t portnum = 0;
@@ -869,10 +870,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 			// should not be reached?!
 			return -1;
 		case MESSAGE_LISTEN:
-			if(send_result(client, hdr->tag, 0) < 0)
-				return -1;
-			usbmuxd_log(LL_DEBUG, "Client %d now LISTENING", client->fd);
-			return start_listen(client);
+			return start_listen(client, hdr);
 		case MESSAGE_CONNECT:
 			ch = (void*)hdr;
 			return start_connect(ch->device_id, ch->port, client, hdr->tag);
