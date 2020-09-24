@@ -214,6 +214,16 @@ static void client_list_add(struct mux_client *client)
 	pthread_mutex_unlock(&client_list_mutex);
 }
 
+static int client_list_contains(struct mux_client *client)
+{
+	FOREACH(struct mux_client *lc, &client_list) {
+		if (client == lc) {
+			return 1;
+		}
+	} ENDFOREACH
+	return 0;
+}
+
 /**
  * Wait for an inbound connection on the usbmuxd socket
  * and create a new mux_client instance for it, and store
@@ -267,15 +277,8 @@ int client_accept(int listenfd)
 
 void client_close(struct mux_client *client)
 {
-	int found = 0;
 	pthread_mutex_lock(&client_list_mutex);
-	FOREACH(struct mux_client *lc, &client_list) {
-		if (client == lc) {
-			found = 1;
-			break;
-		}
-	} ENDFOREACH
-	if (!found) {
+	if (!client_list_contains(client)) {
 		// in case we get called again but client was already freed
 		usbmuxd_log(LL_DEBUG, "%s: ignoring for non-existing client %p", __func__, client);
 		pthread_mutex_unlock(&client_list_mutex);
@@ -567,39 +570,34 @@ static int send_device_add(struct mux_client *client, struct device_info *dev)
 	return res;
 }
 
-static int send_device_remove(struct mux_client *client, uint32_t device_id)
+static int send_message(struct mux_client *client, enum usbmuxd_msgtype msg, const char *type, uint32_t device_id)
 {
 	int res = -1;
 	if (client->proto_version == 1) {
 		/* XML plist packet */
 		plist_t dict = plist_new_dict();
-		plist_dict_set_item(dict, "MessageType", plist_new_string("Detached"));
-		plist_dict_set_item(dict, "DeviceID", plist_new_uint(device_id));
-		res = send_plist(client, 0, dict);
-		plist_free(dict);
-	} else {
-		/* binary packet */
-		res = output_buffer_add_message(client, 0, MESSAGE_DEVICE_REMOVE, &device_id, sizeof(uint32_t));
-	}
-	return res;
-}
-
-static int send_device_paired(struct mux_client *client, uint32_t device_id)
-{
-	int res = -1;
-	if (client->proto_version == 1) {
-		/* XML plist packet */
-		plist_t dict = plist_new_dict();
-		plist_dict_set_item(dict, "MessageType", plist_new_string("Paired"));
+		plist_dict_set_item(dict, "MessageType", plist_new_string(type));
 		plist_dict_set_item(dict, "DeviceID", plist_new_uint(device_id));
 		res = send_plist(client, 0, dict);
 		plist_free(dict);
 	}
 	else {
 		/* binary packet */
-		res = output_buffer_add_message(client, 0, MESSAGE_DEVICE_PAIRED, &device_id, sizeof(uint32_t));
+		res = output_buffer_add_message(client, 0, msg, &device_id, sizeof(uint32_t));
 	}
 	return res;
+}
+
+static int send_device_remove(struct mux_client *client, uint32_t device_id)
+{
+	return send_message(
+		client, MESSAGE_DEVICE_REMOVE, "Detached", device_id);
+}
+
+static int send_device_paired(struct mux_client *client, uint32_t device_id)
+{
+	return send_message(
+		client, MESSAGE_DEVICE_PAIRED, "Paired", device_id);
 }
 
 static int start_listen(struct mux_client *client, struct usbmuxd_header *hdr)
