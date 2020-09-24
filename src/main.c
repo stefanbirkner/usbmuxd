@@ -315,13 +315,22 @@ static int ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout
 }
 #endif
 
+static int accept_new_client(struct fdlist *pollfds)
+{
+	int	fd = fdlist_get_socket_fd(pollfds);
+	if(client_accept(fd) < 0) {
+		usbmuxd_log(LL_FATAL, "client_accept() failed");
+		return -1;
+	}
+	return 0;
+}
+
 static int handle_events(struct fdlist *pollfds)
 {
-	int i, fd;
+	int i;
 
 	if(fdlist_detected_new_socket_connection(pollfds)) {
-		fd = fdlist_get_socket_fd(pollfds);
-		if(client_accept(fd) < 0) {
+		if(accept_new_client(pollfds) < 0) {
 			usbmuxd_log(LL_FATAL, "client_accept() failed");
 			return -1;
 		}
