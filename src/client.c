@@ -371,6 +371,14 @@ static int send_result(struct mux_client *client, uint32_t tag, uint32_t result)
 	return res;
 }
 
+static int send_bad_command(struct mux_client *client, uint32_t tag)
+{
+	if(send_result(client, tag, RESULT_BADCOMMAND) < 0) {
+		return -1;
+	}
+	return 0;
+}
+
 int client_notify_connect(struct mux_client *client, enum usbmuxd_result result)
 {
 	usbmuxd_log(LL_SPEW, "client_notify_connect fd %d result %d", client->fd, result);
@@ -657,7 +665,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 
 	if(client->state != CLIENT_COMMAND) {
 		usbmuxd_log(LL_ERROR, "Client %d command received in the wrong state, got %d but want %d", client->fd, client->state, CLIENT_COMMAND);
-		if(send_result(client, hdr->tag, RESULT_BADCOMMAND) < 0)
+		if(send_bad_command(client, hdr->tag) < 0)
 			return -1;
 		client_close(client);
 		return -1;
@@ -728,9 +736,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 					if (!node) {
 						usbmuxd_log(LL_ERROR, "Received connect request without port number!");
 						plist_free(dict);
-						if (send_result(client, hdr->tag, RESULT_BADCOMMAND) < 0)
-							return -1;
-						return 0;
+						return send_bad_command(client, hdr->tag);
 					}
 					val = 0;
 					plist_get_uint_val(node, &val);
@@ -851,9 +857,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 					usbmuxd_log(LL_ERROR, "Unexpected command '%s' received!", message);
 					free(message);
 					plist_free(dict);
-					if (send_result(client, hdr->tag, RESULT_BADCOMMAND) < 0)
-						return -1;
-					return 0;
+					return send_bad_command(client, hdr->tag);
 				}
 			}
 			// should not be reached?!
@@ -878,9 +882,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 			return 0;
 		default:
 			usbmuxd_log(LL_ERROR, "Client %d invalid command %d", client->fd, hdr->message);
-			if(send_result(client, hdr->tag, RESULT_BADCOMMAND) < 0)
-				return -1;
-			return 0;
+			return send_bad_command(client, hdr->tag);
 	}
 	return -1;
 }
