@@ -658,6 +658,22 @@ static void update_client_info(struct mux_client *client, plist_t dict)
 	client->info = info;
 }
 
+static int start_connect(int device_id, uint16_t port, struct mux_client *client, uint32_t tag)
+{
+	int res;
+	usbmuxd_log(LL_DEBUG, "Client %d requesting connection to device %d port %d", client->fd, device_id, ntohs(port));
+	res = device_start_connect(device_id, ntohs(port), client);
+	if(res < 0) {
+		if (send_result(client, tag, -res) < 0)
+			return -1;
+	} else {
+		client->connect_tag = tag;
+		client->connect_device = device_id;
+		client->state = CLIENT_CONNECTING1;
+	}
+	return 0;
+}
+
 static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 {
 	int res;
@@ -743,17 +759,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 					portnum = (uint16_t)val;
 					plist_free(dict);
 
-					usbmuxd_log(LL_DEBUG, "Client %d requesting connection to device %d port %d", client->fd, device_id, ntohs(portnum));
-					res = device_start_connect(device_id, ntohs(portnum), client);
-					if(res < 0) {
-						if (send_result(client, hdr->tag, -res) < 0)
-							return -1;
-					} else {
-						client->connect_tag = hdr->tag;
-						client->connect_device = device_id;
-						client->state = CLIENT_CONNECTING1;
-					}
-					return 0;
+					return start_connect(device_id, portnum, client, hdr->tag);
 				} else if (!strcmp(message, "ListDevices")) {
 					free(message);
 					plist_free(dict);
@@ -869,17 +875,7 @@ static int handle_command(struct mux_client *client, struct usbmuxd_header *hdr)
 			return start_listen(client);
 		case MESSAGE_CONNECT:
 			ch = (void*)hdr;
-			usbmuxd_log(LL_DEBUG, "Client %d connection request to device %d port %d", client->fd, ch->device_id, ntohs(ch->port));
-			res = device_start_connect(ch->device_id, ntohs(ch->port), client);
-			if(res < 0) {
-				if(send_result(client, hdr->tag, -res) < 0)
-					return -1;
-			} else {
-				client->connect_tag = hdr->tag;
-				client->connect_device = ch->device_id;
-				client->state = CLIENT_CONNECTING1;
-			}
-			return 0;
+			return start_connect(ch->device_id, ch->port, client, hdr->tag);
 		default:
 			usbmuxd_log(LL_ERROR, "Client %d invalid command %d", client->fd, hdr->message);
 			return send_bad_command(client, hdr->tag);
